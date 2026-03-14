@@ -1,0 +1,25 @@
+services:
+  mongodb:
+    container_name: ddev-${DDEV_SITENAME}-mongodb
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+      - MONGO_INITDB_DATABASE=english_tracker
+    volumes:
+      - mongodb-data:/data/db
+      - .:/mnt/ddev_config
+    labels:
+      com.ddev.site-name: ${DDEV_SITENAME}
+      com.ddev.approot: $DDEV_APPROOT
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongodb-data:

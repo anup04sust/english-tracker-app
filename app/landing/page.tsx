@@ -11,7 +11,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.push('/dashboard');
+      router.push('/onboarding');
     }
   }, [status, router]);
 

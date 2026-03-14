@@ -1,0 +1,33 @@
+name: english-tracker-app
+type: generic
+docroot: ""
+php_version: "8.3"
+webserver_type: nginx-fpm
+xdebug_enabled: false
+additional_hostnames: []
+additional_fqdns: []
+use_dns_when_possible: true
+composer_version: ""
+web_environment:
+  - NODE_ENV=development
+  - MONGODB_URI=mongodb://root:root@mongodb:27017/english_tracker?authSource=admin
+nodejs_version: "20"
+corepack_enable: true
+
+# Hooks
+hooks:
+  post-start:
+    - exec: npm install
+    - exec: test -f .env.local || cp .env.example .env.local
+    - exec: bash /var/www/html/.ddev/web-build/start-nextjs.sh
+
+# Router HTTP port
+router_http_port: "80"
+router_https_port: "443"
+
+# Expose port 3000 for Next.js
+web_extra_exposed_ports:
+  - name: nodejs
+    container_port: 3000
+    http_port: 3000
+    https_port: 3001
