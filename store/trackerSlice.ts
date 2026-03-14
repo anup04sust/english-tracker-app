@@ -1,0 +1,10 @@
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { plan } from '@/lib/plan';
+export type AudioEntry={id:string;name:string;url:string;createdAt:string;source:'recorded'|'uploaded';size:number};
+export type DayProgress={completed:boolean;confidence:number;notes:string;transcript:string;aiFeedback:string;vocabulary:string;audioEntries:AudioEntry[]};
+export type TrackerState={selectedDay:number;days:Record<number,DayProgress>};
+const empty=():DayProgress=>({completed:false,confidence:0,notes:'',transcript:'',aiFeedback:'',vocabulary:'',audioEntries:[]});
+const initialState:TrackerState={selectedDay:1,days:Object.fromEntries(plan.map(d=>[d.id,empty()]))};
+const slice=createSlice({name:'tracker',initialState,reducers:{setSelectedDay(s,a:PayloadAction<number>){s.selectedDay=a.payload},toggleCompleted(s,a:PayloadAction<number>){s.days[a.payload].completed=!s.days[a.payload].completed},setConfidence(s,a:PayloadAction<{dayId:number;value:number}>){s.days[a.payload.dayId].confidence=a.payload.value},setField(s,a:PayloadAction<{dayId:number;field:'notes'|'transcript'|'aiFeedback'|'vocabulary';value:string}>){s.days[a.payload.dayId][a.payload.field]=a.payload.value},addAudioEntry(s,a:PayloadAction<{dayId:number;entry:AudioEntry}>){s.days[a.payload.dayId].audioEntries.unshift(a.payload.entry)},removeAudioEntry(s,a:PayloadAction<{dayId:number;entryId:string}>){s.days[a.payload.dayId].audioEntries=s.days[a.payload.dayId].audioEntries.filter(x=>x.id!==a.payload.entryId)},hydrateState(_,a:PayloadAction<TrackerState>){return a.payload},resetAll(){return initialState}}});
+export const {setSelectedDay,toggleCompleted,setConfidence,setField,addAudioEntry,removeAudioEntry,hydrateState,resetAll}=slice.actions;
+export default slice.reducer;

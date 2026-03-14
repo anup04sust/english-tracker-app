@@ -1,0 +1,6 @@
+'use client';
+import { ChangeEvent,useState } from 'react';
+import { useAppDispatch } from '@/store/hooks';
+import { addAudioEntry } from '@/store/trackerSlice';
+const MAX=10*1024*1024;
+export default function Uploader({dayId}:{dayId:number}){const dispatch=useAppDispatch();const [msg,setMsg]=useState('');const [err,setErr]=useState('');const onChange=(e:ChangeEvent<HTMLInputElement>)=>{setMsg('');setErr('');const f=e.target.files?.[0];if(!f)return;const ok=/\.(mp3|wav|webm|m4a|mp4)$/i.test(f.name)||f.type.startsWith('audio/');if(!ok){setErr('Unsupported file type.');return}if(f.size>MAX){setErr('File too large. Max 10MB.');return}dispatch(addAudioEntry({dayId,entry:{id:crypto.randomUUID(),name:f.name,url:URL.createObjectURL(f),createdAt:new Date().toISOString(),source:'uploaded',size:f.size}}));setMsg('Audio uploaded successfully.');e.target.value=''};return <div className='card'><div className='section-title'><h3 style={{margin:0}}>Upload Audio</h3><span className='badge'>Validation</span></div><input className='input' type='file' accept='audio/*,.mp3,.wav,.webm,.m4a,.mp4' onChange={onChange}/>{msg&&<p className='success small'>{msg}</p>}{err&&<p className='error small'>{err}</p>}</div>}
