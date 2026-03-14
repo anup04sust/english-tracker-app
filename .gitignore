@@ -19,6 +19,7 @@ dist/
 # Environment Variables
 .env
 .env.local
+.env.local.bkp
 .env.development.local
 .env.test.local
 .env.production.local
