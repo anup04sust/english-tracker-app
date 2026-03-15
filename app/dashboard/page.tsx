@@ -87,6 +87,7 @@ export default function Dashboard() {
           dayId,
           goal: current.goal,
           language: languageName,
+          templateScript: current.readingScript, // Send the default template
         }),
       });
 

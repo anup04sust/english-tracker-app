@@ -11,18 +11,34 @@ async function extractTextFromFile(buffer: Buffer, fileType: string, fileName: s
     // PDF files
     if (fileType === 'application/pdf') {
       try {
-        // pdf-parse v2 API - use PDFParse class with 'data' option
+        // Import PDFParse class from pdf-parse v2.x
         const { PDFParse } = await import('pdf-parse');
         
-        // Convert Buffer to Uint8Array which PDFParse accepts
+        // Convert Buffer to Uint8Array (required by pdfjs-dist)
         const uint8Array = new Uint8Array(buffer);
         
-        // Create parser with buffer as 'data'
-        const parser = new PDFParse({ data: uint8Array });
+        // Create instance with Uint8Array
+        const parser = new PDFParse(uint8Array);
+        
+        // Load the PDF
+        await parser.load();
         
         // Extract text
         const result = await parser.getText();
-        return result.text || 'Unable to extract text from PDF';
+        
+        // getText() returns an array of text strings, one per page
+        let text = '';
+        if (Array.isArray(result)) {
+          text = result.join('\n');
+        } else if (typeof result === 'string') {
+          text = result;
+        } else if (result && typeof result === 'object' && result.text) {
+          text = result.text;
+        } else {
+          text = String(result);
+        }
+        
+        return text.trim() || 'Unable to extract text from PDF';
       } catch (pdfError: any) {
         console.error('PDF parsing error:', pdfError);
         return `PDF text extraction failed: ${pdfError.message}. File saved but text not extracted.`;
