@@ -10,52 +10,24 @@ export default function UserProfile() {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 12,
-      padding: '8px 12px',
-      background: '#fff',
-      borderRadius: 8,
-      border: '1px solid #e0e0e0',
-    }}>
+    <div className="flex items-center gap-3 px-3 py-2 bg-slate-700 rounded-lg border border-slate-600">
       {session.user.image && (
         <img
           src={session.user.image}
           alt={session.user.name || 'User'}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-          }}
+          className="w-8 h-8 rounded-full"
         />
       )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 14,
-          fontWeight: 600,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-white truncate">
           {session.user.name || 'User'}
         </div>
-        <div style={{
-          fontSize: 12,
-          color: '#666',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
+        <div className="text-xs text-gray-400 truncate">
           {session.user.email}
         </div>
       </div>
       <button
-        className="btn danger"
-        style={{
-          padding: '6px 12px',
-          fontSize: 13,
-        }}
+        className="btn btn-secondary text-xs px-3 py-1.5"
         onClick={() => signOut({ callbackUrl: '/auth/signin' })}
       >
         Sign Out

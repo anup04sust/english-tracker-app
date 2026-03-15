@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import ProfileModel from '@/lib/models/Profile';
+import { logAIRequest } from '@/lib/elasticsearch';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   let userId: string = '';
   
   try {
@@ -28,13 +30,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use user's API key or fallback
-    const apiKey = profile.aiApiKey || process.env.AI_API_KEY;
-    const aiProvider = profile.aiProvider || 'openai';
-    const baseUrl = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
-    const model = profile.aiModel || 'gpt-4o-mini';
+    // Prioritize environment config (Ollama default) over user settings
+    const baseUrl = process.env.AI_BASE_URL || 'http://ollama:11434/v1';
+    const model = process.env.AI_MODEL || profile.aiModel || 'codellama';
+    const apiKey = process.env.AI_API_KEY || profile.aiApiKey || 'ollama';
+    const aiProvider = profile.aiProvider || 'ollama';
 
-    if (!apiKey) {
+    // Ollama doesn't require a real API key
+    const isOllama = baseUrl.includes('ollama');
+    const effectiveApiKey = isOllama ? 'ollama' : apiKey;
+
+    if (!effectiveApiKey && !isOllama) {
       // Generate default milestones without AI
       const defaultMilestones = generateDefaultMilestones(profile);
       await ProfileModel.findOneAndUpdate(
@@ -57,7 +63,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${effectiveApiKey}`,
       },
       body: JSON.stringify({
         model,
@@ -90,6 +96,31 @@ export async function POST(request: NextRequest) {
       { userId },
       { milestones }
     );
+
+    const latency = Date.now() - startTime;
+    
+    // Log to Elasticsearch
+    logAIRequest({
+      timestamp: new Date().toISOString(),
+      userId,
+      endpoint: '/api/generate-milestones',
+      provider: isOllama ? 'Ollama' : 'OpenAI',
+      model,
+      request: {
+        method: 'POST',
+        body: {
+          userId,
+          profession: profile.profession,
+          industry: profile.industry,
+          nativeLanguage: profile.nativeLanguage,
+        },
+      },
+      response: {
+        status: 200,
+        body: { milestonesCount: milestones.length },
+        latency,
+      },
+    }).catch(err => console.error('ES log failed:', err));
 
     return NextResponse.json({
       success: true,

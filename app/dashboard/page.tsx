@@ -24,6 +24,21 @@ export default function Dashboard() {
   const router = useRouter();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [milestones, setMilestones] = useState<any[]>([]);
+  const [aiBannerDismissed, setAiBannerDismissed] = useState(false);
+  const [generatedScript, setGeneratedScript] = useState<string>('');
+  const [scriptLoading, setScriptLoading] = useState(false);
+  const [scriptError, setScriptError] = useState('');
+  const [aiStatus, setAiStatus] = useState<{
+    connected: boolean;
+    message: string;
+    model?: string;
+    provider?: string;
+    loading: boolean;
+  }>({
+    connected: false,
+    message: 'Not tested',
+    loading: true
+  });
   
   const languageCode = tracker.selectedLanguage || 'en';
   const plan = getPlanForLanguage(languageCode);
@@ -42,9 +57,88 @@ export default function Dashboard() {
       return;
     }
     if (status === 'authenticated' && session?.user?.email) {
-      checkOnboarding();
+      // Run both checks in parallel
+      Promise.all([
+        checkOnboarding(),
+        testAIConnection()
+      ]).catch(err => {
+        console.error('Dashboard initialization error:', err);
+      });
     }
-  }, [status, session, router]);
+  }, [status, session?.user?.email, router]);
+
+  // Auto-generate script when day changes
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.email && dayId && current) {
+      generateScript();
+    }
+  }, [dayId]);
+
+  const generateScript = async () => {
+    setScriptLoading(true);
+    setScriptError('');
+    
+    try {
+      const response = await fetch('/api/generate-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session!.user!.email,
+          dayId,
+          goal: current.goal,
+          language: languageName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setGeneratedScript(data.script);
+        if (data.fallback) {
+          setScriptError('Using fallback script (AI unavailable)');
+        }
+      } else {
+        setScriptError(data.error || 'Failed to generate script');
+        // Use the default script from the plan
+        setGeneratedScript(current.readingScript);
+      }
+    } catch (error) {
+      console.error('Script generation error:', error);
+      setScriptError('Failed to generate script');
+      // Use the default script from the plan
+      setGeneratedScript(current.readingScript);
+    } finally {
+      setScriptLoading(false);
+    }
+  };
+
+  const testAIConnection = async () => {
+    setAiStatus(prev => ({ ...prev, loading: true }));
+    try {
+      console.log('Testing AI connection...');
+      const res = await fetch('/api/test-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: session!.user!.email })
+      });
+      const data = await res.json();
+      console.log('AI connection test result:', data);
+      setAiStatus({
+        connected: data.connected,
+        message: data.message,
+        model: data.model,
+        provider: data.provider,
+        loading: false
+      });
+    } catch (err) {
+      console.error('Failed to test AI:', err);
+      setAiStatus({
+        connected: false,
+        message: 'Connection test failed',
+        loading: false
+      });
+    }
+  };
 
   const checkOnboarding = async () => {
     try {
@@ -104,297 +198,445 @@ export default function Dashboard() {
 
   if (status === 'loading' || checkingOnboarding) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-400 mb-6">Loading your learning journey...</p>
+          
+          {/* AI Status During Loading */}
+          {!aiStatus.loading && (
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700">
+              {aiStatus.connected ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                  <span className="text-xs text-green-400 font-medium">
+                    {aiStatus.provider} • {aiStatus.model}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                  <span className="text-xs text-red-400">{aiStatus.message}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="min-h-screen bg-slate-900 flex flex-col">
       {/* Top Navigation Bar */}
-      <nav style={{
-        background: 'rgba(17, 24, 39, 0.95)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '12px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 20,
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        backdropFilter: 'blur(8px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none' }}>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>
-              🌍 Language Tracker
-            </h1>
-          </Link>
-          <LanguageSelector 
-            selectedLanguage={languageCode} 
-            onLanguageChange={(code) => dispatch(setSelectedLanguage(code))} 
-          />
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href="/settings">
-            <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              ⚙️ Settings
+      <nav className="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 sticky top-0 z-50">
+        <div className="px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <span className="text-2xl">🗣️</span>
+              <h1 className="text-xl font-bold text-white">LetsSpeak</h1>
+            </Link>
+            <LanguageSelector 
+              selectedLanguage={languageCode} 
+              onLanguageChange={(code) => dispatch(setSelectedLanguage(code))} 
+            />
+            
+            {/* AI Status Indicator */}
+            <button
+              onClick={() => !aiStatus.connected ? router.push('/settings') : testAIConnection()}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700/50 border border-slate-600 hover:bg-slate-700 transition-colors cursor-pointer"
+              title={aiStatus.connected ? 'Click to retest connection' : 'Click to configure AI API key in settings'}
+            >
+              {aiStatus.loading ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
+                  <span className="text-xs text-gray-400">Testing AI...</span>
+                </>
+              ) : aiStatus.connected ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                  <span className="text-xs text-green-400 font-medium">
+                    {aiStatus.provider || 'AI Connected'}
+                  </span>
+                  {aiStatus.model && (
+                    <span className="text-xs text-gray-500">• {aiStatus.model}</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                  <span className="text-xs text-red-400">{aiStatus.message}</span>
+                  <span className="text-xs text-gray-500">⚙️</span>
+                </>
+              )}
             </button>
-          </Link>
-          <UserProfile />
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Link href="/settings">
+              <button className="btn flex items-center gap-2 text-sm px-4 py-2">
+                <span>⚙️</span>
+                Settings
+              </button>
+            </Link>
+            <UserProfile />
+          </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main style={{ flex: 1, padding: '24px', display: 'grid', gap: 20 }}>
-        {/* Milestones Section */}
-        {milestones.length > 0 && (
-          <div className='card'>
-            <div className='section-title'>
-              <h3 style={{ margin: 0 }}>🎯 Your Learning Milestones</h3>
-              <Link href='/settings'>
-                <button className='btn'>Manage All</button>
-              </Link>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12, marginTop: 16 }}>
-              {milestones.slice(0, 3).map(m => (
-                <div key={m.id} style={{
-                  padding: 12,
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  borderRadius: 8,
-                  borderLeft: '3px solid #38bdf8'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <input type='checkbox' checked={m.completed} readOnly style={{ width: 18, height: 18 }} />
-                    <strong>{m.title}</strong>
-                  </div>
-                  <p className='small muted' style={{ margin: 0 }}>{m.description}</p>
-                  <p className='small muted' style={{ marginTop: 4 }}>
-                    Target: {new Date(m.targetDate).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-            {milestones.length > 3 && (
-              <p className='small muted' style={{ marginTop: 12 }}>+{milestones.length - 3} more milestones</p>
-            )}
-          </div>
-        )}
-
-        {/* Main Dashboard Grid */}
-        <div className='grid'>
-          {/* Sidebar */}
-          <aside className='card'>
-            <div className='section-title'>
-              <h2 style={{ margin: 0 }}>{languageName} Plan</h2>
-              <button className='btn danger' onClick={() => dispatch(resetAll())}>Reset</button>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-80 bg-slate-800 border-r border-slate-700 overflow-y-auto">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">{languageName} Plan</h2>
+              <button 
+                className="text-xs px-3 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20 transition-colors"
+                onClick={() => dispatch(resetAll())}
+              >
+                Reset
+              </button>
             </div>
             
-            <div className='card' style={{ padding: 14, marginTop: 16, marginBottom: 16 }}>
-              <div className='section-title'>
-                <strong>Progress</strong>
-                <span>{done}/15</span>
+            {/* Progress Card */}
+            <div className="bg-slate-700/50 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-300">Progress</span>
+                <span className="text-sm font-bold text-white">{done}/15</span>
               </div>
-              <div className='progress' style={{ marginTop: 8 }}>
-                <span style={{ width: `${pct}%` }} />
+              <div className="progress mb-2">
+                <span style={{ width: `${pct}%` }} className="bg-gradient-to-r from-purple-500 to-pink-500" />
               </div>
-              <p className='small muted' style={{ marginTop: 4 }}>{pct}% complete</p>
+              <p className="text-xs text-gray-400">{pct}% complete</p>
             </div>
             
-            <div className='day-list'>
+            {/* Day List */}
+            <div className="space-y-2">
               {plan.map(d => (
                 <button 
                   key={d.id} 
-                  className={`day-item ${dayId === d.id ? 'active' : ''} ${tracker.days[d.id]?.completed ? 'done' : ''}`}
+                  className={`w-full text-left p-3 rounded-lg transition-all ${
+                    dayId === d.id 
+                      ? 'bg-purple-600 text-white shadow-lg' 
+                      : tracker.days[d.id]?.completed 
+                        ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20' 
+                        : 'bg-slate-700/30 text-gray-300 hover:bg-slate-700/50'
+                  }`}
                   onClick={() => dispatch(setSelectedDay(d.id))}
                 >
-                  <div>
-                    <strong>Day {d.id}</strong>
-                    <div className='small muted'>{d.title}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="font-semibold">Day {d.id}</div>
+                      <div className="text-xs opacity-80 mt-0.5">{d.title}</div>
+                    </div>
+                    <div className="text-xl">{tracker.days[d.id]?.completed ? '✅' : '⬜'}</div>
                   </div>
-                  <div>{tracker.days[d.id]?.completed ? '✅' : '⬜'}</div>
                 </button>
               ))}
             </div>
-          </aside>
+          </div>
+        </aside>
 
-          {/* Main Content */}
-          <section style={{ display: 'grid', gap: 20 }}>
-            {/* Day Header */}
-            <div className='card'>
-              <div className='header'>
-                <div>
-                  <span className='badge'>Day {current.id}</span>
-                  <h2 style={{ marginTop: 8, marginBottom: 4 }}>{current.title}</h2>
-                  <p className='muted'>{current.goal}</p>
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6 max-w-7xl mx-auto">
+            {/* AI Not Connected Banner */}
+            {!aiStatus.loading && !aiStatus.connected && !aiBannerDismissed && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-start gap-3">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-yellow-400 mb-1">AI Assistant Not Connected</h4>
+                  <p className="text-sm text-gray-300 mb-3">
+                    Configure your AI API key to unlock personalized feedback, milestone generation, and intelligent learning assistance.
+                  </p>
+                  <Link href="/settings">
+                    <button className="btn btn-primary text-sm px-4 py-2">
+                      Configure AI Settings
+                    </button>
+                  </Link>
                 </div>
                 <button 
-                  className={`btn ${data.completed ? '' : 'primary'}`}
+                  onClick={() => setAiBannerDismissed(true)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Milestones Section */}
+            {milestones.length > 0 && (
+              <div className="card">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span>🎯</span>
+                    Your Learning Milestones
+                  </h3>
+                  <Link href="/settings">
+                    <button className="btn text-sm">Manage All</button>
+                  </Link>
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  {milestones.slice(0, 3).map(m => (
+                    <div 
+                      key={m.id} 
+                      className="p-4 bg-blue-500/10 border-l-4 border-blue-500 rounded"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <input 
+                          type="checkbox" 
+                          checked={m.completed} 
+                          readOnly 
+                          className="w-4 h-4 rounded"
+                        />
+                        <span className="font-semibold text-white">{m.title}</span>
+                      </div>
+                      <p className="text-sm text-gray-400 mb-2">{m.description}</p>
+                      <p className="text-xs text-gray-500">
+                        Target: {new Date(m.targetDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {milestones.length > 3 && (
+                  <p className="text-sm text-gray-400 mt-3">+{milestones.length - 3} more milestones</p>
+                )}
+              </div>
+            )}
+
+            {/* Day Header Card */}
+            <div className="card">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <span className="badge mb-2">Day {current.id}</span>
+                  <h2 className="text-2xl font-bold text-white mb-2">{current.title}</h2>
+                  <p className="text-gray-400">{current.goal}</p>
+                </div>
+                <button 
+                  className={`btn ${data.completed ? 'btn-secondary' : 'btn-primary'}`}
                   onClick={() => dispatch(toggleCompleted(dayId))}
                 >
-                  {data.completed ? 'Mark Incomplete' : 'Mark Complete'}
+                  {data.completed ? '✓ Completed' : 'Mark Complete'}
                 </button>
               </div>
               
-              <div className='kpi' style={{ marginTop: 16 }}>
-                <div className='box'>
-                  <div className='small muted'>Completed Days</div>
-                  <strong style={{ fontSize: 24 }}>{done}/15</strong>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="box text-center">
+                  <div className="text-sm text-gray-400 mb-1">Completed Days</div>
+                  <div className="text-3xl font-bold text-white">{done}<span className="text-xl text-gray-500">/15</span></div>
                 </div>
-                <div className='box'>
-                  <div className='small muted'>Confidence</div>
-                  <strong style={{ fontSize: 24 }}>{data.confidence}/5</strong>
+                <div className="box text-center">
+                  <div className="text-sm text-gray-400 mb-1">Confidence</div>
+                  <div className="text-3xl font-bold text-white">{data.confidence}<span className="text-xl text-gray-500">/5</span></div>
                 </div>
-                <div className='box'>
-                  <div className='small muted'>Audio Entries</div>
-                  <strong style={{ fontSize: 24 }}>{data.audioEntries.length}</strong>
+                <div className="box text-center">
+                  <div className="text-sm text-gray-400 mb-1">Audio Entries</div>
+                  <div className="text-3xl font-bold text-white">{data.audioEntries.length}</div>
                 </div>
               </div>
             </div>
 
-            {/* Checklist */}
-            <div className='card'>
-              <div className='section-title'>
-                <h3 style={{ margin: 0 }}>Checklist</h3>
-                <span className='badge'>Today</span>
+            {/* Checklist Card */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">Checklist</h3>
+                <span className="badge">Today</span>
               </div>
-              <div className='checks' style={{ marginTop: 12 }}>
-                {current.tasks.map(t => (
-                  <div key={t} className='check'>✅ {t}</div>
+              <div className="space-y-2">
+                {current.tasks.map((t, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                    <span className="text-green-400">✅</span>
+                    <span className="text-gray-300">{t}</span>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Reading Script */}
-            <div className='card'>
-              <div className='section-title'>
-                <h3 style={{ margin: 0 }}>Reading Script</h3>
-                <button className='btn' onClick={() => navigator.clipboard.writeText(current.readingScript)}>
-                  Copy
-                </button>
+            {/* Reading Script Card */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">Reading Script</h3>
+                <div className="flex items-center gap-2">
+                  {scriptError && !scriptLoading && (
+                    <span className="text-xs text-yellow-400" title={scriptError}>⚠️</span>
+                  )}
+                  <button 
+                    className="btn text-sm px-3 py-1.5"
+                    onClick={() => navigator.clipboard.writeText(generatedScript || current.readingScript)}
+                    title="Copy to clipboard"
+                  >
+                    📋 Copy
+                  </button>
+                  <button 
+                    className="btn btn-secondary text-sm px-3 py-1.5"
+                    onClick={generateScript}
+                    disabled={scriptLoading}
+                    title="Generate new script using AI"
+                  >
+                    {scriptLoading ? (
+                      <>
+                        <span className="animate-spin inline-block">⏳</span>
+                        Generating...
+                      </>
+                    ) : (
+                      <>🔄 Regenerate</>
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className='script' style={{ marginTop: 12 }}>{current.readingScript}</div>
+              {scriptLoading ? (
+                <div className="flex items-center justify-center py-12 text-gray-400">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-3"></div>
+                    <p className="text-sm">Generating personalized script...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="script">{generatedScript || current.readingScript}</div>
+              )}
             </div>
 
-            {/* Recording & Upload */}
-            <div className='grid' style={{ gridTemplateColumns: '1fr 1fr' }}>
+            {/* Recording & Upload Grid */}
+            <div className="grid md:grid-cols-2 gap-6">
               <Recorder dayId={dayId} />
               <Uploader dayId={dayId} />
             </div>
 
-            {/* Daily Notes */}
-            <div className='card'>
-              <div className='section-title'>
-                <h3 style={{ margin: 0 }}>Daily Notes</h3>
-                <span className='badge'>Reflection</span>
+            {/* Daily Notes Card */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">Daily Notes</h3>
+                <span className="badge">Reflection</span>
               </div>
-              <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+              <div className="space-y-4">
                 <div>
-                  <label className='small muted'>Confidence (1–5)</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Confidence (1–5)
+                  </label>
                   <select 
-                    className='select' 
+                    className="select w-full"
                     value={data.confidence}
                     onChange={e => dispatch(setConfidence({ dayId, value: Number(e.target.value) }))}
-                    style={{ marginTop: 4 }}
                   >
                     <option value={0}>Select score</option>
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                    <option value={4}>4</option>
-                    <option value={5}>5</option>
+                    <option value={1}>1 - Not confident</option>
+                    <option value={2}>2 - Slightly confident</option>
+                    <option value={3}>3 - Moderately confident</option>
+                    <option value={4}>4 - Very confident</option>
+                    <option value={5}>5 - Extremely confident</option>
                   </select>
                 </div>
                 <div>
-                  <label className='small muted'>Transcript or summary</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Transcript or summary
+                  </label>
                   <textarea 
-                    className='textarea'
+                    className="textarea w-full"
                     value={data.transcript}
                     onChange={e => dispatch(setField({ dayId, field: 'transcript', value: e.target.value }))}
-                    placeholder='Paste or type what you said...'
-                    style={{ marginTop: 4 }}
+                    placeholder="Paste or type what you said..."
+                    rows={4}
                   />
                 </div>
                 <div>
-                  <label className='small muted'>Vocabulary / phrases learned</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Vocabulary / phrases learned
+                  </label>
                   <textarea 
-                    className='textarea'
+                    className="textarea w-full"
                     value={data.vocabulary}
                     onChange={e => dispatch(setField({ dayId, field: 'vocabulary', value: e.target.value }))}
-                    placeholder='Useful phrases from today...'
-                    style={{ marginTop: 4 }}
+                    placeholder="Useful phrases from today..."
+                    rows={3}
                   />
                 </div>
                 <div>
-                  <label className='small muted'>Notes</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Notes
+                  </label>
                   <textarea 
-                    className='textarea'
+                    className="textarea w-full"
                     value={data.notes}
                     onChange={e => dispatch(setField({ dayId, field: 'notes', value: e.target.value }))}
-                    placeholder='What felt easy or difficult?'
-                    style={{ marginTop: 4 }}
+                    placeholder="What felt easy or difficult?"
+                    rows={3}
                   />
                 </div>
               </div>
             </div>
 
-            {/* AI Feedback */}
-            <div className='card'>
-              <div className='section-title'>
-                <h3 style={{ margin: 0 }}>AI Feedback</h3>
-                <button className='btn secondary' onClick={askAI} disabled={loading}>
-                  {loading ? 'Reviewing...' : 'Get AI Review'}
+            {/* AI Feedback Card */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">AI Feedback</h3>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={askAI} 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="animate-spin inline-block">⏳</span>
+                      Reviewing...
+                    </>
+                  ) : (
+                    <>🤖 Get AI Review</>
+                  )}
                 </button>
               </div>
-              <p className='small muted' style={{ marginTop: 8 }}>
+              <p className="text-sm text-gray-400 mb-4">
                 Works with your own API settings or with a built-in local fallback review.
               </p>
-              {error && <p className='error small' style={{ marginTop: 8 }}>{error}</p>}
-              <div className='script' style={{ marginTop: 12 }}>
-                {data.aiFeedback || 'No feedback yet.'}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg mb-4">
+                  {error}
+                </div>
+              )}
+              <div className="script">
+                {data.aiFeedback || 'No feedback yet. Click "Get AI Review" to receive personalized feedback on your practice.'}
               </div>
             </div>
 
-            {/* Saved Audio */}
-            <div className='card'>
-              <div className='section-title'>
-                <h3 style={{ margin: 0 }}>Saved Audio</h3>
-                <span className='badge'>Archive</span>
+            {/* Saved Audio Card */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">Saved Audio</h3>
+                <span className="badge">{data.audioEntries.length} recordings</span>
               </div>
               {data.audioEntries.length === 0 ? (
-                <p className='muted small' style={{ marginTop: 12 }}>
-                  No recordings or uploads yet for this day.
-                </p>
+                <div className="text-center py-8 text-gray-400">
+                  <div className="text-4xl mb-3">🎤</div>
+                  <p>No recordings or uploads yet for this day.</p>
+                  <p className="text-sm mt-2">Use the recorder or uploader above to add audio.</p>
+                </div>
               ) : (
-                <div className='audio-list' style={{ marginTop: 12 }}>
+                <div className="space-y-4">
                   {data.audioEntries.map(a => (
-                    <div className='audio-item' key={a.id}>
-                      <div className='section-title'>
+                    <div key={a.id} className="bg-slate-700/30 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
                         <div>
-                          <strong>{a.name}</strong>
-                          <div className='small muted'>
+                          <div className="font-semibold text-white">{a.name}</div>
+                          <div className="text-sm text-gray-400 mt-1">
                             {a.source} • {size(a.size)} • {new Date(a.createdAt).toLocaleString()}
                           </div>
                         </div>
                         <button 
-                          className='btn danger'
+                          className="text-red-400 hover:text-red-300 text-sm px-3 py-1 bg-red-500/10 rounded hover:bg-red-500/20 transition-colors"
                           onClick={() => dispatch(removeAudioEntry({ dayId, entryId: a.id }))}
                         >
                           Remove
                         </button>
                       </div>
-                      <audio controls src={a.url} style={{ width: '100%', marginTop: 8 }} />
+                      <audio controls src={a.url} className="w-full" />
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </section>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

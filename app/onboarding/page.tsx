@@ -445,12 +445,31 @@ export default function OnboardingPage() {
         {/* Step 3: AI Configuration */}
         {step === 3 && (
           <div>
-            <h1 style={{ marginBottom: 10 }}>AI Configuration 🤖</h1>
-            <p className="muted" style={{ marginBottom: 30 }}>Configure your personal AI assistant for feedback (optional)</p>
+            <h1 style={{ marginBottom: 10 }}>AI Configuration (Optional) 🤖</h1>
+            <p className="muted" style={{ marginBottom: 10 }}>
+              Our platform uses <strong>Ollama (Local AI)</strong> by default - completely free and private!
+            </p>
+            <p className="muted" style={{ marginBottom: 30 }}>
+              Optionally configure your own OpenAI/Anthropic API key for cloud-based AI (future feature)
+            </p>
+            
+            <div style={{ padding: 16, background: 'rgba(34,197,94,0.1)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.3)', marginBottom: 20 }}>
+              <h4 style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: '#22c55e' }}>
+                <span>✅</span> Default: Ollama (Local AI)
+              </h4>
+              <p className="small" style={{ margin: 0, lineHeight: 1.6 }}>
+                • 100% Free - No API costs<br />
+                • Private - All data stays on your device<br />
+                • Fast - No internet latency<br />
+                • Ready to use - Already configured!
+              </p>
+            </div>
             
             <div style={{ display: 'grid', gap: 20 }}>
               <div>
-                <label className="small muted" style={{ display: 'block', marginBottom: 8 }}>AI Provider</label>
+                <label className="small muted" style={{ display: 'block', marginBottom: 8 }}>
+                  Cloud AI Provider (Optional - Future Feature)
+                </label>
                 <select 
                   className="select" 
                   value={aiProvider}
@@ -466,7 +485,7 @@ export default function OnboardingPage() {
               {aiProvider === 'openai' && (
                 <div style={{ padding: 16, background: 'rgba(56,189,248,0.1)', borderRadius: 8, border: '1px solid rgba(56,189,248,0.3)' }}>
                   <h4 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>📘</span> How to Get OpenAI API Key
+                    <span>📘</span> How to Get OpenAI API Key (Future Feature)
                   </h4>
                   <ol style={{ paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
                     <li>Visit <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>platform.openai.com/api-keys</a></li>
@@ -477,7 +496,7 @@ export default function OnboardingPage() {
                     <li>Paste it below</li>
                   </ol>
                   <p className="small muted" style={{ marginTop: 12, marginBottom: 0 }}>
-                    💡 <strong>Note:</strong> You'll need to add billing info to your OpenAI account. Typical cost: $0.01-0.05 per feedback.
+                    ⚠️ <strong>Optional:</strong> Cloud AI providers are a future enhancement. Ollama works great by default - no key needed!
                   </p>
                 </div>
               )}
@@ -485,7 +504,7 @@ export default function OnboardingPage() {
               {aiProvider === 'anthropic' && (
                 <div style={{ padding: 16, background: 'rgba(251,146,60,0.1)', borderRadius: 8, border: '1px solid rgba(251,146,60,0.3)' }}>
                   <h4 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>🔶</span> How to Get Anthropic API Key
+                    <span>🔶</span> How to Get Anthropic API Key (Future Feature)
                   </h4>
                   <ol style={{ paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
                     <li>Visit <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#fb923c', textDecoration: 'underline' }}>console.anthropic.com/settings/keys</a></li>
@@ -496,7 +515,7 @@ export default function OnboardingPage() {
                     <li>Paste it below</li>
                   </ol>
                   <p className="small muted" style={{ marginTop: 12, marginBottom: 0 }}>
-                    💡 <strong>Note:</strong> Claude offers $5 free credit for new users. Typical cost: $0.02-0.08 per feedback.
+                    ⚠️ <strong>Optional:</strong> Cloud AI providers are a future enhancement. Ollama works great by default - no key needed!
                   </p>
                 </div>
               )}
@@ -504,43 +523,42 @@ export default function OnboardingPage() {
               {aiProvider === 'custom' && (
                 <div style={{ padding: 16, background: 'rgba(168,85,247,0.1)', borderRadius: 8, border: '1px solid rgba(168,85,247,0.3)' }}>
                   <h4 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>⚙️</span> Custom API Configuration
+                    <span>⚙️</span> Custom API Configuration (Advanced)
                   </h4>
                   <p style={{ marginBottom: 12 }}>
                     Enter your custom API key below. Make sure your API endpoint is compatible with OpenAI's chat completion format.
                   </p>
                   <p className="small muted" style={{ margin: 0 }}>
-                    Supported formats: OpenAI-compatible APIs, Azure OpenAI, local LLMs (Ollama, LM Studio), etc.
+                    💡 <strong>Tip:</strong> Ollama is already configured! This option is for advanced users who want to use alternative providers.
                   </p>
                 </div>
               )}
 
               <div>
                 <label className="small muted" style={{ display: 'block', marginBottom: 8 }}>
-                  Your API Key (kept private & encrypted)
+                  Your API Key (Optional - Future Feature)
                 </label>
                 <input
                   type="password"
                   className="input"
                   placeholder={
-                    aiProvider === 'openai' ? 'sk-...' : 
-                    aiProvider === 'anthropic' ? 'sk-ant-...' : 
-                    'Enter your API key'
+                    aiProvider === 'openai' ? 'Optional: sk-...' : 
+                    aiProvider === 'anthropic' ? 'Optional: sk-ant-...' : 
+                    'Optional: Enter your API key'
                   }
                   value={aiApiKey}
                   onChange={(e) => setAiApiKey(e.target.value)}
                 />
                 <p className="small muted" style={{ marginTop: 8 }}>
-                  We never store your API key in plain text. Skip this to use fallback AI (limited features).
+                  ✨ Cloud AI keys are optional. Leave empty to use Ollama (free, local AI) which is already configured!
                 </p>
               </div>
 
               {/* Skip Option */}
-              <div style={{ padding: 16, background: 'rgba(100,116,139,0.1)', borderRadius: 8, border: '1px solid rgba(100,116,139,0.3)' }}>
-                <h4 style={{ marginBottom: 8 }}>🎭 Don't have an API key?</h4>
+              <div style={{ padding: 16, background: 'rgba(34,197,94,0.1)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.3)' }}>
+                <h4 style={{ marginBottom: 8 }}>✅ Using Ollama by Default</h4>
                 <p className="small" style={{ margin: 0 }}>
-                  No problem! You can skip this step and use our fallback AI for basic feedback. 
-                  You can always add your own API key later in Settings for advanced features.
+                  You can skip this step entirely! Ollama provides free, private AI that's already configured and ready to go.
                 </p>
               </div>
             </div>

@@ -2,75 +2,92 @@
 
 import { signIn } from 'next-auth/react';
 import { FaGoogle, FaGithub } from 'react-icons/fa';
+import Link from 'next/link';
 
 export default function SignIn() {
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    }}>
-      <div className="card" style={{ maxWidth: 450, width: '100%', margin: 20 }}>
-        <div style={{ textAlign: 'center', marginBottom: 30 }}>
-          <h1 style={{ fontSize: 32, marginBottom: 8 }}>Welcome Back! 👋</h1>
-          <p className="muted">Sign in to continue your English learning journey</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-purple-800 to-slate-900 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-10 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-10 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-md mx-5 z-10">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
+            <span className="text-4xl">🗣️</span>
+            <span className="text-3xl font-bold">LetsSpeak</span>
+          </Link>
+          <p className="text-purple-200 mt-2">Let's Speak Globally</p>
         </div>
 
-        <div style={{ display: 'grid', gap: 16 }}>
-          <button
-            className="btn primary"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              padding: '14px 20px',
-              fontSize: 16,
-              background: '#4285F4',
-              border: 'none',
-            }}
-            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
-          >
-            <FaGoogle size={20} />
-            Continue with Google
-          </button>
+        {/* Sign In Card */}
+        <div className="card">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">Welcome Back! 👋</h1>
+            <p className="text-gray-400">Sign in to continue your language learning journey</p>
+          </div>
 
-          <button
-            className="btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              padding: '14px 20px',
-              fontSize: 16,
-              background: '#24292e',
-              color: '#fff',
-              border: 'none',
-            }}
-            onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
-          >
-            <FaGithub size={20} />
-            Continue with GitHub
-          </button>
+          <div className="space-y-4">
+            <button
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
+              onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+            >
+              <FaGoogle size={20} />
+              Continue with Google
+            </button>
+
+            <button
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 text-base font-semibold bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
+              onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
+            >
+              <FaGithub size={20} />
+              Continue with GitHub
+            </button>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-500">
+              By signing in, you agree to our{' '}
+              <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</Link>
+            </p>
+          </div>
+
+          <div className="mt-6 p-5 bg-purple-50 rounded-lg border border-purple-100">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <span>✨</span>
+              Why sign in?
+            </h3>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-purple-500 mt-0.5">•</span>
+                <span>Sync your progress across all devices</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-500 mt-0.5">•</span>
+                <span>Keep your learning data secure in the cloud</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-500 mt-0.5">•</span>
+                <span>Access your complete history anytime</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-500 mt-0.5">•</span>
+                <span>Get personalized AI-powered feedback</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div style={{ marginTop: 30, textAlign: 'center' }}>
-          <p className="small muted">
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </p>
-        </div>
-
-        <div className="card" style={{ marginTop: 20, padding: 16, background: '#f0f7ff' }}>
-          <h3 style={{ fontSize: 14, marginBottom: 8 }}>✨ Why sign in?</h3>
-          <ul className="small muted" style={{ listStyle: 'none', padding: 0, lineHeight: 1.8 }}>
-            <li>• Sync your progress across devices</li>
-            <li>• Keep your learning data secure</li>
-            <li>• Access your history anytime</li>
-            <li>• Personalized learning experience</li>
-          </ul>
+        {/* Back to Home */}
+        <div className="text-center mt-6">
+          <Link href="/" className="text-purple-200 hover:text-white transition-colors text-sm">
+            ← Back to Home
+          </Link>
         </div>
       </div>
     </div>
